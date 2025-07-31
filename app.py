@@ -2,7 +2,6 @@ import streamlit as st
 from datetime import datetime
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-import json
 
 # 페이지 기본 설정
 st.set_page_config(page_title="퇴근 전 점검 체크리스트", layout="centered")
@@ -12,7 +11,7 @@ st.write("아래 항목을 모두 확인 후 체크하고, 세부 내용을 입�
 # ✅ Google Sheets 설정
 SHEET_KEY = "1N_n9kU7mqpVXm1Zm4f-jRilQdlnlwxuNiUt-0llzOHY"
 
-# ✅ 구글 인증 (Streamlit Secrets → 로컬 개발 시 JSON 파일 사용)
+# ✅ Google API 인증
 scope = [
     "https://spreadsheets.google.com/feeds",
     "https://www.googleapis.com/auth/spreadsheets",
@@ -20,12 +19,10 @@ scope = [
     "https://www.googleapis.com/auth/drive"
 ]
 
-if "SERVICE_ACCOUNT" in st.secrets:
-    # Streamlit Cloud 환경 → Secrets.toml에서 불러오기
-    service_account_info = json.loads(st.secrets["SERVICE_ACCOUNT"])
+if "SERVICE_ACCOUNT" in st.secrets:  # Streamlit Cloud 환경
+    service_account_info = dict(st.secrets["SERVICE_ACCOUNT"])
     creds = ServiceAccountCredentials.from_json_keyfile_dict(service_account_info, scope)
-else:
-    # 로컬 실행 환경 → service_account.json 파일 사용
+else:  # 로컬 개발 환경
     SERVICE_ACCOUNT_FILE = "service_account.json"
     creds = ServiceAccountCredentials.from_json_keyfile_name(SERVICE_ACCOUNT_FILE, scope)
 
@@ -65,5 +62,6 @@ if st.button("제출하기"):
         st.warning("모든 항목을 체크해야 제출할 수 있습니다.")
     else:
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        sheet.append_row([user_name, now])  # Google Sheets에 작성자 / 날짜 기록
+        # Google Sheets에 작성자 / 날짜 기록
+        sheet.append_row([user_name, now])
         st.success("퇴근 전 점검 체크리스트가 저장되었습니다. (Google Sheets)")
