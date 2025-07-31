@@ -2,16 +2,13 @@ import streamlit as st
 from datetime import datetime
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+import pytz  # ✅ 한국 시간 변환 라이브러리
 
-# 페이지 기본 설정
+# 페이지 설정
 st.set_page_config(page_title="퇴근 전 점검 체크리스트", layout="centered")
-st.title("퇴근 전 점검 체크리스트")
-st.write("아래 항목을 모두 확인 후 체크하고, 세부 내용을 입력하세요.")
 
 # ✅ Google Sheets 설정
 SHEET_KEY = "1N_n9kU7mqpVXm1Zm4f-jRilQdlnlwxuNiUt-0llzOHY"
-
-# ✅ Google API 인증
 scope = [
     "https://spreadsheets.google.com/feeds",
     "https://www.googleapis.com/auth/spreadsheets",
@@ -19,12 +16,11 @@ scope = [
     "https://www.googleapis.com/auth/drive"
 ]
 
-if "SERVICE_ACCOUNT" in st.secrets:  # Streamlit Cloud 환경
+if "SERVICE_ACCOUNT" in st.secrets:
     service_account_info = dict(st.secrets["SERVICE_ACCOUNT"])
     creds = ServiceAccountCredentials.from_json_keyfile_dict(service_account_info, scope)
-else:  # 로컬 개발 환경
-    SERVICE_ACCOUNT_FILE = "service_account.json"
-    creds = ServiceAccountCredentials.from_json_keyfile_name(SERVICE_ACCOUNT_FILE, scope)
+else:
+    creds = ServiceAccountCredentials.from_json_keyfile_name("service_account.json", scope)
 
 client = gspread.authorize(creds)
 sheet = client.open_by_key(SHEET_KEY).sheet1
@@ -61,7 +57,9 @@ if st.button("제출하기"):
     elif not all(sub[0] for sub in submissions):
         st.warning("모든 항목을 체크해야 제출할 수 있습니다.")
     else:
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        # Google Sheets에 작성자 / 날짜 기록
+        # ✅ 한국 시간으로 저장
+        kst = pytz.timezone('Asia/Seoul')
+        now = datetime.now(kst).strftime("%Y-%m-%d %H:%M:%S")
+        
         sheet.append_row([user_name, now])
-        st.success("퇴근 전 점검 체크리스트가 저장되었습니다. (Google Sheets)")
+        st.success(f"퇴근 전 점검 체크리스트가 저장되었습니다. (저장 시간: {now})")
