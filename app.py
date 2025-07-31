@@ -4,6 +4,7 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import json
 
+# 페이지 기본 설정
 st.set_page_config(page_title="퇴근 전 점검 체크리스트", layout="centered")
 st.title("퇴근 전 점검 체크리스트")
 st.write("아래 항목을 모두 확인 후 체크하고, 세부 내용을 입력하세요.")
@@ -11,26 +12,21 @@ st.write("아래 항목을 모두 확인 후 체크하고, 세부 내용을 입�
 # ✅ Google Sheets 설정
 SHEET_KEY = "1N_n9kU7mqpVXm1Zm4f-jRilQdlnlwxuNiUt-0llzOHY"
 
-# 🔹 로컬 개발 시 JSON 파일 사용
-SERVICE_ACCOUNT_FILE = "service_account.json"
+# ✅ 구글 인증 (Streamlit Secrets → 로컬 개발 시 JSON 파일 사용)
+scope = [
+    "https://spreadsheets.google.com/feeds",
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive.file",
+    "https://www.googleapis.com/auth/drive"
+]
 
-# 🔹 Streamlit Cloud 배포 시 Secrets 사용
-if "SERVICE_ACCOUNT" in st.secrets:  
+if "SERVICE_ACCOUNT" in st.secrets:
+    # Streamlit Cloud 환경 → Secrets.toml에서 불러오기
     service_account_info = json.loads(st.secrets["SERVICE_ACCOUNT"])
-    scope = [
-        "https://spreadsheets.google.com/feeds",
-        "https://www.googleapis.com/auth/spreadsheets",
-        "https://www.googleapis.com/auth/drive.file",
-        "https://www.googleapis.com/auth/drive"
-    ]
     creds = ServiceAccountCredentials.from_json_keyfile_dict(service_account_info, scope)
 else:
-    scope = [
-        "https://spreadsheets.google.com/feeds",
-        "https://www.googleapis.com/auth/spreadsheets",
-        "https://www.googleapis.com/auth/drive.file",
-        "https://www.googleapis.com/auth/drive"
-    ]
+    # 로컬 실행 환경 → service_account.json 파일 사용
+    SERVICE_ACCOUNT_FILE = "service_account.json"
     creds = ServiceAccountCredentials.from_json_keyfile_name(SERVICE_ACCOUNT_FILE, scope)
 
 client = gspread.authorize(creds)
@@ -49,6 +45,7 @@ checklist = [
     (9, "전체 기기 전원OFF", "에어컨(매장/창고), 서큘레이터, 스피커, 멀티탭, 저울 3개, 오븐, 캔시머, TV, 매장 불, 간판 불 OFF")
 ]
 
+# ✅ UI 표시
 submissions = []
 for num, title, desc in checklist:
     st.markdown(f"### {num}. {title}")
@@ -56,9 +53,11 @@ for num, title, desc in checklist:
     detail = st.text_area("세부내용", value=desc, key=f"detail_{num}")
     submissions.append((checked, detail))
 
+# 작성자 이름
 st.markdown("---")
 user_name = st.text_input("작성자 이름")
 
+# 제출 버튼 동작
 if st.button("제출하기"):
     if not user_name:
         st.warning("이름을 입력하세요.")
@@ -66,5 +65,5 @@ if st.button("제출하기"):
         st.warning("모든 항목을 체크해야 제출할 수 있습니다.")
     else:
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        sheet.append_row([user_name, now])  # Google Sheets에 작성자/날짜 저장
+        sheet.append_row([user_name, now])  # Google Sheets에 작성자 / 날짜 기록
         st.success("퇴근 전 점검 체크리스트가 저장되었습니다. (Google Sheets)")
